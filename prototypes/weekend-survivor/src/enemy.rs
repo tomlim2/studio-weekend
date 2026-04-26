@@ -4,8 +4,10 @@ use rand::Rng;
 use crate::player::Player;
 
 const ENEMY_SIZE: f32 = 20.0;
+pub const ENEMY_RADIUS: f32 = ENEMY_SIZE * 0.5;
 const ENEMY_SPEED: f32 = 100.0;
 const ENEMY_COLOR: Color = Color::srgb(0.9, 0.25, 0.25);
+const ENEMY_HP: i32 = 10;
 const SPAWN_INTERVAL_SECS: f32 = 0.5;
 const SPAWN_RADIUS: f32 = 700.0;
 const MAX_ENEMIES: usize = 100;
@@ -24,6 +26,9 @@ impl Plugin for EnemyPlugin {
 
 #[derive(Component)]
 pub struct Enemy;
+
+#[derive(Component)]
+pub struct Health(pub i32);
 
 #[derive(Resource)]
 struct SpawnTimer(Timer);
@@ -54,6 +59,7 @@ fn spawn_enemies(
 
     commands.spawn((
         Enemy,
+        Health(ENEMY_HP),
         Mesh2d(meshes.add(Rectangle::new(ENEMY_SIZE, ENEMY_SIZE))),
         MeshMaterial2d(materials.add(ENEMY_COLOR)),
         Transform::from_xyz(pos.x, pos.y, 0.0),

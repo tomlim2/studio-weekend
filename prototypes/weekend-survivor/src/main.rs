@@ -1,11 +1,13 @@
 use bevy::prelude::*;
 
 mod camera;
+mod combat;
 mod enemy;
 mod player;
 mod weapon;
 
 use camera::CameraPlugin;
+use combat::CombatPlugin;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use weapon::WeaponPlugin;
@@ -20,6 +22,12 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins((CameraPlugin, PlayerPlugin, EnemyPlugin, WeaponPlugin))
+        .add_plugins((
+            CameraPlugin,
+            PlayerPlugin,
+            EnemyPlugin,
+            WeaponPlugin,
+            CombatPlugin,
+        ))
         .run();
 }

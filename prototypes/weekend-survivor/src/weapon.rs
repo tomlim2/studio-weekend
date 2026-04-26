@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::enemy::Enemy;
 use crate::player::Player;
 
-const PROJECTILE_RADIUS: f32 = 5.0;
+pub const PROJECTILE_RADIUS: f32 = 5.0;
 const PROJECTILE_SPEED: f32 = 600.0;
 const PROJECTILE_LIFETIME_SECS: f32 = 1.5;
 const PROJECTILE_COLOR: Color = Color::srgb(1.0, 0.95, 0.4);
