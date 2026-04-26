@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 
+mod camera;
+mod enemy;
 mod player;
+
+use camera::CameraPlugin;
+use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 
 fn main() {
@@ -13,11 +18,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(PlayerPlugin)
-        .add_systems(Startup, setup_camera)
+        .add_plugins((CameraPlugin, PlayerPlugin, EnemyPlugin))
         .run();
-}
-
-fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
 }
