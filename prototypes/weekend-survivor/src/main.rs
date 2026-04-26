@@ -3,10 +3,12 @@ use bevy::prelude::*;
 mod camera;
 mod enemy;
 mod player;
+mod weapon;
 
 use camera::CameraPlugin;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
+use weapon::WeaponPlugin;
 
 fn main() {
     App::new()
@@ -18,6 +20,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins((CameraPlugin, PlayerPlugin, EnemyPlugin))
+        .add_plugins((CameraPlugin, PlayerPlugin, EnemyPlugin, WeaponPlugin))
         .run();
 }
