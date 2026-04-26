@@ -1,0 +1,16 @@
+[package]
+name = "weekend-survivor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.18"
+rand = "0.8"
+
+# Iteration speed: own crate compiles fast (debug),
+# deps compile optimized once.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
