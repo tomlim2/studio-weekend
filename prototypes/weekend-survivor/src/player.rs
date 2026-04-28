@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-const PLAYER_RADIUS: f32 = 16.0;
+pub const PLAYER_RADIUS: f32 = 16.0;
 const PLAYER_SPEED: f32 = 300.0;
 const PLAYER_COLOR: Color = Color::srgb(0.3, 0.7, 1.0);
 
@@ -16,6 +16,12 @@ impl Plugin for PlayerPlugin {
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct Xp(pub u32);
+
+#[derive(Component)]
+pub struct Level(pub u32);
+
 fn spawn_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -23,6 +29,8 @@ fn spawn_player(
 ) {
     commands.spawn((
         Player,
+        Xp(0),
+        Level(1),
         Mesh2d(meshes.add(Circle::new(PLAYER_RADIUS))),
         MeshMaterial2d(materials.add(PLAYER_COLOR)),
         Transform::from_xyz(0.0, 0.0, 0.0),

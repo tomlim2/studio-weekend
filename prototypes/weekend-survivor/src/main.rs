@@ -3,12 +3,14 @@ use bevy::prelude::*;
 mod camera;
 mod combat;
 mod enemy;
+mod gem;
 mod player;
 mod weapon;
 
 use camera::CameraPlugin;
 use combat::CombatPlugin;
 use enemy::EnemyPlugin;
+use gem::GemPlugin;
 use player::PlayerPlugin;
 use weapon::WeaponPlugin;
 
@@ -28,6 +30,7 @@ fn main() {
             EnemyPlugin,
             WeaponPlugin,
             CombatPlugin,
+            GemPlugin,
         ))
         .run();
 }

@@ -11,12 +11,19 @@ pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, projectile_hits_enemy);
+        app.add_message::<EnemyKilled>()
+            .add_systems(Update, projectile_hits_enemy);
     }
+}
+
+#[derive(Message)]
+pub struct EnemyKilled {
+    pub pos: Vec2,
 }
 
 fn projectile_hits_enemy(
     mut commands: Commands,
+    mut killed_events: MessageWriter<EnemyKilled>,
     projectiles: Query<(Entity, &Transform), With<Projectile>>,
     mut enemies: Query<(Entity, &Transform, &mut Health), With<Enemy>>,
 ) {
@@ -44,6 +51,7 @@ fn projectile_hits_enemy(
             if health.0 <= 0 {
                 commands.entity(enemy_entity).despawn();
                 killed_this_frame.insert(enemy_entity);
+                killed_events.write(EnemyKilled { pos: enemy_pos });
             }
             commands.entity(proj_entity).despawn();
             break;
