@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::upgrade::{GameplaySet, Upgrades};
+
 pub const PLAYER_RADIUS: f32 = 16.0;
 const PLAYER_SPEED: f32 = 300.0;
 const PLAYER_COLOR: Color = Color::srgb(0.3, 0.7, 1.0);
@@ -9,7 +11,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_player)
-            .add_systems(Update, move_player);
+            .add_systems(Update, move_player.in_set(GameplaySet));
     }
 }
 
@@ -40,6 +42,7 @@ fn spawn_player(
 fn move_player(
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    upgrades: Res<Upgrades>,
     mut query: Query<&mut Transform, With<Player>>,
 ) {
     let Ok(mut transform) = query.single_mut() else {
@@ -61,7 +64,8 @@ fn move_player(
     }
 
     if dir.length_squared() > 0.0 {
-        let delta = dir.normalize() * PLAYER_SPEED * time.delta_secs();
+        let speed = PLAYER_SPEED * upgrades.move_speed_mult;
+        let delta = dir.normalize() * speed * time.delta_secs();
         transform.translation.x += delta.x;
         transform.translation.y += delta.y;
     }

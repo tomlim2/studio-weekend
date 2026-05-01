@@ -5,6 +5,7 @@ mod combat;
 mod enemy;
 mod gem;
 mod player;
+mod upgrade;
 mod weapon;
 
 use camera::CameraPlugin;
@@ -12,6 +13,7 @@ use combat::CombatPlugin;
 use enemy::EnemyPlugin;
 use gem::GemPlugin;
 use player::PlayerPlugin;
+use upgrade::UpgradePlugin;
 use weapon::WeaponPlugin;
 
 fn main() {
@@ -31,6 +33,7 @@ fn main() {
             WeaponPlugin,
             CombatPlugin,
             GemPlugin,
+            UpgradePlugin,
         ))
         .run();
 }

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::enemy::Enemy;
 use crate::player::Player;
+use crate::upgrade::{GameplaySet, Upgrades};
 
 pub const PROJECTILE_RADIUS: f32 = 5.0;
 const PROJECTILE_SPEED: f32 = 600.0;
@@ -9,19 +10,18 @@ const PROJECTILE_LIFETIME_SECS: f32 = 1.5;
 const PROJECTILE_COLOR: Color = Color::srgb(1.0, 0.95, 0.4);
 const ATTACK_COOLDOWN_SECS: f32 = 0.6;
 const ATTACK_RANGE: f32 = 500.0;
+const PROJECTILE_SPREAD_RAD: f32 = 0.14; // ~8° between adjacent projectiles
 
 pub struct WeaponPlugin;
 
 impl Plugin for WeaponPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(AttackCooldown(Timer::from_seconds(
-            ATTACK_COOLDOWN_SECS,
-            TimerMode::Repeating,
-        )))
-        .add_systems(
-            Update,
-            (auto_attack, move_projectiles, despawn_expired_projectiles),
-        );
+        app.insert_resource(AttackTimer { since_last: 0.0 })
+            .add_systems(
+                Update,
+                (auto_attack, move_projectiles, despawn_expired_projectiles)
+                    .in_set(GameplaySet),
+            );
     }
 }
 
@@ -32,18 +32,23 @@ pub struct Projectile {
 }
 
 #[derive(Resource)]
-struct AttackCooldown(Timer);
+struct AttackTimer {
+    since_last: f32,
+}
 
 fn auto_attack(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
-    mut cooldown: ResMut<AttackCooldown>,
+    upgrades: Res<Upgrades>,
+    mut timer: ResMut<AttackTimer>,
     player_q: Query<&Transform, With<Player>>,
     enemies: Query<&Transform, With<Enemy>>,
 ) {
-    if !cooldown.0.tick(time.delta()).just_finished() {
+    timer.since_last += time.delta_secs();
+    let cooldown = ATTACK_COOLDOWN_SECS * upgrades.attack_cooldown_mult;
+    if timer.since_last < cooldown {
         return;
     }
     let Ok(player_t) = player_q.single() else {
@@ -66,18 +71,34 @@ fn auto_attack(
         return;
     };
 
-    let dir = (target - player_pos).normalize_or_zero();
-    let velocity = dir * PROJECTILE_SPEED;
+    timer.since_last = 0.0;
 
-    commands.spawn((
-        Projectile {
-            velocity,
-            lifetime: Timer::from_seconds(PROJECTILE_LIFETIME_SECS, TimerMode::Once),
-        },
-        Mesh2d(meshes.add(Circle::new(PROJECTILE_RADIUS))),
-        MeshMaterial2d(materials.add(PROJECTILE_COLOR)),
-        Transform::from_xyz(player_pos.x, player_pos.y, 0.0),
-    ));
+    let base_dir = (target - player_pos).normalize_or_zero();
+    if base_dir == Vec2::ZERO {
+        return;
+    }
+    let count = upgrades.projectile_count.max(1);
+    let center_offset = (count as f32 - 1.0) * 0.5;
+
+    let mesh = meshes.add(Circle::new(PROJECTILE_RADIUS));
+    let material = materials.add(PROJECTILE_COLOR);
+
+    for i in 0..count {
+        let angle_offset = (i as f32 - center_offset) * PROJECTILE_SPREAD_RAD;
+        let rot = Mat2::from_angle(angle_offset);
+        let dir = rot * base_dir;
+        let velocity = dir * PROJECTILE_SPEED;
+
+        commands.spawn((
+            Projectile {
+                velocity,
+                lifetime: Timer::from_seconds(PROJECTILE_LIFETIME_SECS, TimerMode::Once),
+            },
+            Mesh2d(mesh.clone()),
+            MeshMaterial2d(material.clone()),
+            Transform::from_xyz(player_pos.x, player_pos.y, 0.0),
+        ));
+    }
 }
 
 fn move_projectiles(time: Res<Time>, mut q: Query<(&Projectile, &mut Transform)>) {

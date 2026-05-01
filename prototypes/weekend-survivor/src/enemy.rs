@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::player::Player;
+use crate::upgrade::GameplaySet;
 
 const ENEMY_SIZE: f32 = 20.0;
 pub const ENEMY_RADIUS: f32 = ENEMY_SIZE * 0.5;
@@ -20,7 +21,7 @@ impl Plugin for EnemyPlugin {
             SPAWN_INTERVAL_SECS,
             TimerMode::Repeating,
         )))
-        .add_systems(Update, (spawn_enemies, chase_player));
+        .add_systems(Update, (spawn_enemies, chase_player).in_set(GameplaySet));
     }
 }
 

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::enemy::{ENEMY_RADIUS, Enemy, Health};
+use crate::upgrade::GameplaySet;
 use crate::weapon::{PROJECTILE_RADIUS, Projectile};
 
 const PROJECTILE_DAMAGE: i32 = 10;
@@ -12,7 +13,7 @@ pub struct CombatPlugin;
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<EnemyKilled>()
-            .add_systems(Update, projectile_hits_enemy);
+            .add_systems(Update, projectile_hits_enemy.in_set(GameplaySet));
     }
 }
 
