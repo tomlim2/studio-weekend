@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use crate::upgrade::{GameplaySet, Upgrades};
+use crate::hp::{Hp, IFrame, PLAYER_MAX_HP};
+use crate::upgrade::{GameState, GameplaySet, Upgrades};
 
 pub const PLAYER_RADIUS: f32 = 16.0;
 const PLAYER_SPEED: f32 = 300.0;
@@ -11,7 +12,8 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_player)
-            .add_systems(Update, move_player.in_set(GameplaySet));
+            .add_systems(Update, move_player.in_set(GameplaySet))
+            .add_systems(OnExit(GameState::GameOver), reset_player);
     }
 }
 
@@ -33,6 +35,8 @@ fn spawn_player(
         Player,
         Xp(0),
         Level(1),
+        Hp::new(PLAYER_MAX_HP),
+        IFrame::default(),
         Mesh2d(meshes.add(Circle::new(PLAYER_RADIUS))),
         MeshMaterial2d(materials.add(PLAYER_COLOR)),
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -68,5 +72,18 @@ fn move_player(
         let delta = dir.normalize() * speed * time.delta_secs();
         transform.translation.x += delta.x;
         transform.translation.y += delta.y;
+    }
+}
+
+fn reset_player(
+    mut q: Query<(&mut Hp, &mut Xp, &mut Level, &mut IFrame, &mut Transform), With<Player>>,
+) {
+    if let Ok((mut hp, mut xp, mut level, mut iframe, mut transform)) = q.single_mut() {
+        hp.current = hp.max;
+        xp.0 = 0;
+        level.0 = 1;
+        iframe.0 = 0.0;
+        transform.translation.x = 0.0;
+        transform.translation.y = 0.0;
     }
 }

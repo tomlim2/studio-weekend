@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::enemy::Enemy;
 use crate::player::Player;
-use crate::upgrade::{GameplaySet, Upgrades};
+use crate::upgrade::{GameState, GameplaySet, Upgrades};
 
 pub const PROJECTILE_RADIUS: f32 = 5.0;
 const PROJECTILE_SPEED: f32 = 600.0;
@@ -21,7 +21,8 @@ impl Plugin for WeaponPlugin {
                 Update,
                 (auto_attack, move_projectiles, despawn_expired_projectiles)
                     .in_set(GameplaySet),
-            );
+            )
+            .add_systems(OnExit(GameState::GameOver), reset_weapon);
     }
 }
 
@@ -119,4 +120,15 @@ fn despawn_expired_projectiles(
             commands.entity(entity).despawn();
         }
     }
+}
+
+fn reset_weapon(
+    mut commands: Commands,
+    projectiles: Query<Entity, With<Projectile>>,
+    mut timer: ResMut<AttackTimer>,
+) {
+    for e in projectiles.iter() {
+        commands.entity(e).despawn();
+    }
+    timer.since_last = 0.0;
 }

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::player::Player;
-use crate::upgrade::GameplaySet;
+use crate::upgrade::{GameState, GameplaySet};
 
 const ENEMY_SIZE: f32 = 20.0;
 pub const ENEMY_RADIUS: f32 = ENEMY_SIZE * 0.5;
@@ -21,7 +21,8 @@ impl Plugin for EnemyPlugin {
             SPAWN_INTERVAL_SECS,
             TimerMode::Repeating,
         )))
-        .add_systems(Update, (spawn_enemies, chase_player).in_set(GameplaySet));
+        .add_systems(Update, (spawn_enemies, chase_player).in_set(GameplaySet))
+        .add_systems(OnExit(GameState::GameOver), reset_enemies);
     }
 }
 
@@ -84,4 +85,15 @@ fn chase_player(
         t.translation.x += delta.x;
         t.translation.y += delta.y;
     }
+}
+
+fn reset_enemies(
+    mut commands: Commands,
+    enemies: Query<Entity, With<Enemy>>,
+    mut timer: ResMut<SpawnTimer>,
+) {
+    for e in enemies.iter() {
+        commands.entity(e).despawn();
+    }
+    timer.0.reset();
 }

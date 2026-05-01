@@ -4,6 +4,8 @@ mod camera;
 mod combat;
 mod enemy;
 mod gem;
+mod hp;
+mod hud;
 mod player;
 mod upgrade;
 mod weapon;
@@ -12,6 +14,8 @@ use camera::CameraPlugin;
 use combat::CombatPlugin;
 use enemy::EnemyPlugin;
 use gem::GemPlugin;
+use hp::HpPlugin;
+use hud::HudPlugin;
 use player::PlayerPlugin;
 use upgrade::UpgradePlugin;
 use weapon::WeaponPlugin;
@@ -34,6 +38,8 @@ fn main() {
             CombatPlugin,
             GemPlugin,
             UpgradePlugin,
+            HpPlugin,
+            HudPlugin,
         ))
         .run();
 }

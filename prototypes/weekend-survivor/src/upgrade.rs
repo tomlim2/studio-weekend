@@ -22,8 +22,13 @@ impl Plugin for UpgradePlugin {
             .add_systems(
                 Update,
                 pick_upgrade.run_if(in_state(GameState::LevelingUp)),
-            );
+            )
+            .add_systems(OnExit(GameState::GameOver), reset_upgrades);
     }
+}
+
+fn reset_upgrades(mut upgrades: ResMut<Upgrades>) {
+    *upgrades = Upgrades::default();
 }
 
 #[derive(SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
@@ -34,6 +39,7 @@ pub enum GameState {
     #[default]
     Playing,
     LevelingUp,
+    GameOver,
 }
 
 #[derive(Resource)]

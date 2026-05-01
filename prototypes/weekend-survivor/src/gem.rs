@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::combat::EnemyKilled;
 use crate::player::{Level, PLAYER_RADIUS, Player, Xp};
-use crate::upgrade::GameplaySet;
+use crate::upgrade::{GameState, GameplaySet};
 
 const GEM_RADIUS: f32 = 4.0;
 const GEM_COLOR: Color = Color::srgb(0.4, 0.95, 0.4);
@@ -15,17 +15,19 @@ pub struct GemPlugin;
 
 impl Plugin for GemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<LevelUp>().add_systems(
-            Update,
-            (
-                spawn_gems_on_kill,
-                attract_gems_to_player,
-                pickup_gems,
-                level_up_check,
+        app.add_message::<LevelUp>()
+            .add_systems(
+                Update,
+                (
+                    spawn_gems_on_kill,
+                    attract_gems_to_player,
+                    pickup_gems,
+                    level_up_check,
+                )
+                    .chain()
+                    .in_set(GameplaySet),
             )
-                .chain()
-                .in_set(GameplaySet),
-        );
+            .add_systems(OnExit(GameState::GameOver), reset_gems);
     }
 }
 
@@ -112,5 +114,11 @@ fn level_up_check(
         level.0 += 1;
         info!("LEVEL UP! Now level {}", level.0);
         level_up_writer.write(LevelUp);
+    }
+}
+
+fn reset_gems(mut commands: Commands, gems: Query<Entity, With<Gem>>) {
+    for e in gems.iter() {
+        commands.entity(e).despawn();
     }
 }
