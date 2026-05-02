@@ -59,43 +59,49 @@
 
 ## Acceptance Criteria
 
-- [ ] 캐릭터가 WSAD로 이동, 두 문이 화면에 보임
-- [ ] 문에 닿으면 정답/오답 분기
-- [ ] 시드 기반 정답 경로 12개 동일하게 재생성됨
-- [ ] 12층 통과 = 승리 화면
-- [ ] 오답 = try again 화면 → 클릭 → 1층 리셋
-- [ ] 진행 카운터 표시
-- [ ] localStorage best floor 저장 + 표시
+- [x] 카메라가 WSAD로 이동, 두 문이 화면에 보임 (1인칭으로 변경 — 캐릭터 스프라이트 없음)
+- [x] 문에 닿으면 (z=-2.0 평면 통과) 정답/오답 분기
+- [x] 시드 기반 정답 경로 12개 동일하게 재생성됨 (`mulberry32(0xC0FFEE)`)
+- [x] 12층 통과 = 승리 화면 (녹색 톤 오버레이)
+- [x] 오답 = try again 화면 → 클릭 또는 아무 키 → 1층 리셋
+- [x] 진행 카운터 표시 (Floor N / 12)
+- [x] localStorage best floor 저장 + HUD/오버레이 표시
 
 ## Build Stages
 
 | 단계 | 목표 | 검증 | 상태 |
 |---|---|---|---|
-| A | scene + 320×180 픽셀 후처리 + 캐릭터 + WSAD + 두 문 (스프라이트만) | 화면에 도트 룩으로 캐릭터/문 보이고 WSAD로 움직임 | — |
-| B | 문 충돌 판정 + 시드 PRNG 12개 정답 경로 + 정답/오답 콘솔 로그 | 같은 시드로 같은 경로, 콘솔에 분기 출력 | — |
-| C | 룸 진행 (정답 = 다음 룸으로 reset, 캐릭터 위치 초기화) + 12층 승리 화면 | 12층까지 진행 가능 | — |
-| D | "try again!" 오답 화면 + 클릭 리셋 + 진행 카운터 HUD | 죽음 → 클릭 → 1층 시작, 카운터 동작 | — |
-| E | 약올림 연출 — 컨피티, 웃는 NPC 스프라이트, "byebye~" 텍스트 애니 | 죽으면 신나서 약오름 | — |
-| F | BGM 1트랙 + best floor localStorage + 그 외 폴리시 | 전체 톤 일관, best 표시됨 | — |
+| A | scene + 320×180 픽셀 후처리 + 캐릭터 + WSAD + 두 문 | 도트 룩 + WSAD 이동 | `8ec8415` (3인칭) → `c615755` (1인칭으로 변경) |
+| B | 문 충돌 판정 + 시드 PRNG + 정답/오답 분기 | 같은 시드 = 같은 경로, 콘솔 분기 | `2a82dc5` |
+| C+D | 클릭 재시작 오버레이 + 진행 카운터 + 층별 시각 큐 | 죽음 → 클릭 → 1층 재시작 | `ef30bc0` |
+| E | 약올림 연출 — 컨피티, 웃는 NPC 스프라이트, "byebye~" 애니 | 죽으면 신나는 톤으로 약올림 | `cd58979` |
+| F | BGM 1트랙 + best floor localStorage + 아무 키 재시작 | 죽어도 음악 계속, best 누적 | `c596c04` |
 
-## Architecture (계획)
+전 단계 `main` 머지 완료. MVP Acceptance Criteria 7/7 충족.
 
-단일 HTML 파일 안에서 ES module pattern. 모듈 분리 가능하면 별도 .js로 빼지만 "빠른 구현" 원칙 우선.
+## Architecture (final)
 
-```
-index.html
-  <script type="importmap"> three from CDN </script>
-  <script type="module">
-    // scene setup
-    // pixel render target + upscale post pass
-    // input
-    // game state (currentFloor, path[12])
-    // tick loop
-  </script>
-```
+전체 게임이 단일 `index.html` 안에 ES module로 인라인. Three.js만 importmap으로 esm.sh CDN에서 로드. 모듈 분리하지 않음 — "빠른 구현" 원칙 + 한 화면짜리 게임이라 응집도 충분.
+
+| 영역 | 위치 |
+|---|---|
+| 팔레트 (8색 hex) | `PAL` 객체 |
+| 저해상도 RenderTarget + nearest 업스케일 | `target` + `fsScene` 풀스크린 쿼드 |
+| 1인칭 카메라 (FOV 70°, 머리 높이 1.6) | `camera`, `SPAWN` |
+| Floor mesh, back wall mesh | `floor`, `wall` (벽 색이 floor마다 순환) |
+| 도어 빌보드 (좌/우, 16×32 캔버스 → texture) | `doorL`, `doorR` |
+| Input (e.code 기반) | `keys`, `keydown`/`keyup` |
+| Seeded PRNG (mulberry32) + path | `rand`, `PATH` |
+| Game state | `state.{floor, phase}` |
+| Door collision + branching | `commitChoice()` (z<-2.0 평면 통과) |
+| Overlay UI (DOM, fail/win 공용) | `#overlay`, `showOverlay()` |
+| 약올림 연출 (NPC, 컨피티, wiggle/bounce/pulse) | CSS keyframes + `spawnConfetti()` |
+| BGM (procedural chiptune, 4-bar loop) | `BGM` IIFE — Web Audio square+triangle |
+| Best floor (localStorage) | `bestFloor`, `recordIfBetter()` |
 
 상태:
-- `currentFloor: 0..11`
-- `path: [0|1] × 12` (시드로 생성, 정답 경로)
-- `phase: 'playing' | 'failed' | 'won'`
-- `bestFloor: number` (localStorage)
+- `state.floor: 0..11` — 현재 층 인덱스
+- `state.phase: 'playing' | 'failed' | 'won'`
+- `bestFloor: number` — localStorage `w212-best`
+
+모든 게임플레이 흐름이 `commitChoice()` 한 함수로 모임. floor 진행 = 카메라를 SPAWN으로 리셋 + 벽 색 갱신.
