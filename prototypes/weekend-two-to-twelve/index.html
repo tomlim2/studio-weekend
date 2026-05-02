@@ -105,7 +105,7 @@
     <div class="title">try again!</div>
     <div class="byebye">byebye~ ✨</div>
     <div class="sub" id="overlaySub">made it to floor 1</div>
-    <div class="hint">click anywhere</div>
+    <div class="hint">click anywhere — or press any key</div>
   </div>
   <script type="importmap">
     {
@@ -248,6 +248,74 @@
 
     const state = { floor: 0, phase: 'playing' }; // 'playing' | 'failed' | 'won'
 
+    // -------- localStorage best floor --------
+    const STORAGE_KEY = 'w212-best';
+    let bestFloor = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0;
+    function recordIfBetter(reachedFloor) {
+      if (reachedFloor > bestFloor) {
+        bestFloor = reachedFloor;
+        localStorage.setItem(STORAGE_KEY, String(bestFloor));
+      }
+    }
+
+    // -------- BGM (procedural chiptune, never stops) --------
+    const BGM = (() => {
+      let ctx = null, master = null, started = false, nextStart = 0;
+      const BPM = 132;
+      const beat = 60 / BPM;
+      const eighth = beat / 2;
+      const m2hz = m => 440 * Math.pow(2, (m - 69) / 12);
+      // Cheery 4-bar loop in C major — 32 eighth-note melody + 16 quarter-note bass
+      const MELODY = [
+        72, 76, 79, 76, 74, 76, 72, 71,
+        74, 76, 79, 81, 79, 76, 74, 72,
+        72, 76, 79, 76, 74, 76, 72, 67,
+        69, 72, 74, 76, 74, 72, 69, 64,
+      ];
+      const BASS = [
+        48, 48, 48, 48,
+        53, 53, 53, 53,
+        55, 55, 55, 55,
+        48, 48, 48, 48,
+      ];
+      function blip(freq, t, dur, type, peak) {
+        const osc = ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(peak, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(g); g.connect(master);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+      }
+      function scheduleBar() {
+        const t0 = nextStart;
+        for (let i = 0; i < 32; i++) {
+          blip(m2hz(MELODY[i]), t0 + i * eighth, eighth * 0.85, 'square', 0.10);
+        }
+        for (let i = 0; i < 16; i++) {
+          blip(m2hz(BASS[i]), t0 + i * (eighth * 2), eighth * 1.8, 'triangle', 0.18);
+        }
+        nextStart = t0 + 32 * eighth;
+      }
+      function start() {
+        if (started) return;
+        started = true;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0.6;
+        master.connect(ctx.destination);
+        nextStart = ctx.currentTime + 0.1;
+        scheduleBar();
+        setInterval(() => {
+          while (nextStart - ctx.currentTime < 1.0) scheduleBar();
+        }, 250);
+      }
+      return { start };
+    })();
+
     // Per-floor wall color cycle (8 palette colors → cycles through 12 floors)
     const FLOOR_WALL_COLORS = [
       PAL.purple, PAL.pink, PAL.orange, PAL.yellow,
@@ -323,7 +391,8 @@
     }
 
     function updateHud() {
-      hud.textContent = `Floor ${state.floor + 1} / ${N_FLOORS}`;
+      const bestStr = bestFloor > 0 ? ` — best ${bestFloor}` : '';
+      hud.textContent = `Floor ${state.floor + 1} / ${N_FLOORS}${bestStr}`;
     }
     function showOverlay(kind, sub) {
       overlay.classList.toggle('win', kind === 'win');
@@ -357,8 +426,9 @@
         state.floor++;
         if (state.floor >= N_FLOORS) {
           state.phase = 'won';
+          recordIfBetter(N_FLOORS);
           console.log('WIN');
-          showOverlay('win', `cleared all ${N_FLOORS} floors`);
+          showOverlay('win', `cleared all ${N_FLOORS} floors — best ${bestFloor}`);
         } else {
           console.log(`Floor ${state.floor + 1} — correct (${choice ? 'R' : 'L'})`);
           camera.position.copy(SPAWN);
@@ -366,9 +436,10 @@
         }
       } else {
         const reachedFloor = state.floor + 1;
+        recordIfBetter(reachedFloor);
         state.phase = 'failed';
         console.log(`WRONG — picked ${choice ? 'R' : 'L'}, needed ${want ? 'R' : 'L'}`);
-        showOverlay('fail', `made it to floor ${reachedFloor}`);
+        showOverlay('fail', `made it to floor ${reachedFloor} — best ${bestFloor}`);
       }
       updateHud();
     }
@@ -400,8 +471,14 @@
 
     // -------- Input (use e.code so layout/IME doesn't matter) --------
     const keys = Object.create(null);
-    addEventListener('keydown', e => keys[e.code] = true);
+    addEventListener('keydown', e => {
+      keys[e.code] = true;
+      BGM.start();
+      if (state.phase !== 'playing') resetGame();
+    });
     addEventListener('keyup', e => keys[e.code] = false);
+    // Also start BGM on overlay click (covers fail → click → next attempt path)
+    overlay.addEventListener('click', () => BGM.start());
 
     // -------- Loop --------
     const SPEED = 0.06;
