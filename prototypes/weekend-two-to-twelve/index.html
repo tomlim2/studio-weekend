@@ -23,10 +23,43 @@
       pointer-events: none;
       text-shadow: 2px 2px 0 #1a1c2c;
     }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      background: rgba(26, 28, 44, 0.85);
+      cursor: pointer;
+      z-index: 10;
+    }
+    #overlay.show { display: flex; }
+    #overlay .title {
+      font-size: 56px;
+      color: #ffcd75;
+      text-shadow: 4px 4px 0 #b13e53;
+    }
+    #overlay .sub {
+      font-size: 22px;
+      color: #f4f4f4;
+    }
+    #overlay .hint {
+      margin-top: 16px;
+      font-size: 16px;
+      color: #a7f070;
+    }
+    #overlay.win .title { color: #a7f070; text-shadow: 4px 4px 0 #38b764; }
   </style>
 </head>
 <body>
-  <div id="hud">Floor 1 / 12 — Stage A scaffold (WSAD)</div>
+  <div id="hud">Floor 1 / 12</div>
+  <div id="overlay">
+    <div class="title">try again!</div>
+    <div class="sub" id="overlaySub">made it to floor 1</div>
+    <div class="hint">click anywhere</div>
+  </div>
   <script type="importmap">
     {
       "imports": {
@@ -168,16 +201,42 @@
 
     const state = { floor: 0, phase: 'playing' }; // 'playing' | 'failed' | 'won'
 
-    const hud = document.getElementById('hud');
-    function updateHud() {
-      if (state.phase === 'won') {
-        hud.textContent = `🎉 CLEARED ALL ${N_FLOORS} FLOORS`;
-      } else if (state.phase === 'failed') {
-        hud.textContent = `try again! (refresh for now — Stage D will add click-to-restart)`;
-      } else {
-        hud.textContent = `Floor ${state.floor + 1} / ${N_FLOORS}`;
-      }
+    // Per-floor wall color cycle (8 palette colors → cycles through 12 floors)
+    const FLOOR_WALL_COLORS = [
+      PAL.purple, PAL.pink, PAL.orange, PAL.yellow,
+      PAL.greenLt, PAL.greenDk, PAL.purple, PAL.pink,
+      PAL.orange, PAL.yellow, PAL.greenLt, PAL.greenDk,
+    ];
+    function applyFloorVisuals() {
+      wall.material.color.setHex(FLOOR_WALL_COLORS[state.floor]);
     }
+    applyFloorVisuals();
+
+    const hud = document.getElementById('hud');
+    const overlay = document.getElementById('overlay');
+    const overlaySub = document.getElementById('overlaySub');
+
+    function updateHud() {
+      hud.textContent = `Floor ${state.floor + 1} / ${N_FLOORS}`;
+    }
+    function showOverlay(kind, sub) {
+      overlay.classList.toggle('win', kind === 'win');
+      overlay.querySelector('.title').textContent = kind === 'win' ? 'cleared!' : 'try again!';
+      overlaySub.textContent = sub;
+      overlay.classList.add('show');
+    }
+    function hideOverlay() {
+      overlay.classList.remove('show');
+    }
+    function resetGame() {
+      state.floor = 0;
+      state.phase = 'playing';
+      camera.position.copy(SPAWN);
+      applyFloorVisuals();
+      updateHud();
+      hideOverlay();
+    }
+    overlay.addEventListener('click', resetGame);
     updateHud();
 
     function commitChoice() {
@@ -190,13 +249,17 @@
         if (state.floor >= N_FLOORS) {
           state.phase = 'won';
           console.log('WIN');
+          showOverlay('win', `cleared all ${N_FLOORS} floors`);
         } else {
           console.log(`Floor ${state.floor + 1} — correct (${choice ? 'R' : 'L'})`);
           camera.position.copy(SPAWN);
+          applyFloorVisuals();
         }
       } else {
+        const reachedFloor = state.floor + 1;
         state.phase = 'failed';
         console.log(`WRONG — picked ${choice ? 'R' : 'L'}, needed ${want ? 'R' : 'L'}`);
+        showOverlay('fail', `made it to floor ${reachedFloor}`);
       }
       updateHud();
     }
