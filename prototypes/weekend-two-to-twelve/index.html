@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekend 2-to-the-12</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      background: #1a1c2c;
+      font-family: monospace;
+      color: #f4f4f4;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    #hud {
+      position: fixed;
+      top: 12px; left: 12px;
+      font-size: 18px;
+      color: #ffcd75;
+      pointer-events: none;
+      text-shadow: 2px 2px 0 #1a1c2c;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Floor 1 / 12 — Stage A scaffold (WSAD)</div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.169.0"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+
+    // -------- Palette --------
+    const PAL = {
+      shadow:   0x1a1c2c,
+      purple:   0x5d275d,
+      greenDk:  0x38b764,
+      greenLt:  0xa7f070,
+      pink:     0xb13e53,
+      orange:   0xef7d57,
+      yellow:   0xffcd75,
+      white:    0xf4f4f4,
+    };
+
+    // -------- Render target (low-res for crunchy pixels) --------
+    const PIXEL_W = 320, PIXEL_H = 180;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setPixelRatio(1);
+    document.body.appendChild(renderer.domElement);
+
+    const target = new THREE.WebGLRenderTarget(PIXEL_W, PIXEL_H, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      generateMipmaps: false,
+    });
+
+    // -------- Scene --------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(PAL.shadow);
+
+    const camera = new THREE.PerspectiveCamera(40, PIXEL_W / PIXEL_H, 0.1, 100);
+    camera.position.set(0, 5.0, 7.0);
+    camera.lookAt(0, 0.8, -2);
+
+    // floor (GB dark green)
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshBasicMaterial({ color: PAL.greenDk })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    // back wall accent stripe (purple)
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 4),
+      new THREE.MeshBasicMaterial({ color: PAL.purple })
+    );
+    wall.position.set(0, 2, -8);
+    scene.add(wall);
+
+    // -------- Sprite helpers --------
+    function solidTexture(hex, w, h) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+      ctx.fillRect(0, 0, w, h);
+      const t = new THREE.CanvasTexture(c);
+      t.magFilter = THREE.NearestFilter;
+      t.minFilter = THREE.NearestFilter;
+      t.generateMipmaps = false;
+      return t;
+    }
+
+    function spriteFromCanvas(draw, w, h, scaleX, scaleY) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      draw(ctx, w, h);
+      const tex = new THREE.CanvasTexture(c);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      const mat = new THREE.SpriteMaterial({ map: tex });
+      const s = new THREE.Sprite(mat);
+      s.scale.set(scaleX, scaleY, 1);
+      return s;
+    }
+
+    function colorHex(hex) {
+      return '#' + hex.toString(16).padStart(6, '0');
+    }
+
+    // -------- Player (16x16 yellow blob with pink dot eyes) --------
+    const player = spriteFromCanvas((ctx, w, h) => {
+      ctx.fillStyle = colorHex(PAL.yellow);
+      // round-ish body
+      ctx.fillRect(2, 4, 12, 10);
+      ctx.fillRect(3, 3, 10, 12);
+      ctx.fillRect(4, 2, 8, 14);
+      // eyes
+      ctx.fillStyle = colorHex(PAL.shadow);
+      ctx.fillRect(5, 7, 2, 2);
+      ctx.fillRect(9, 7, 2, 2);
+      // mouth (smile)
+      ctx.fillStyle = colorHex(PAL.pink);
+      ctx.fillRect(6, 11, 4, 1);
+      ctx.fillRect(5, 10, 1, 1);
+      ctx.fillRect(10, 10, 1, 1);
+    }, 16, 16, 1.2, 1.2);
+    player.position.set(0, 0.8, 4);
+    scene.add(player);
+
+    // -------- Doors (16x32, purple frame, lighter green inside) --------
+    function makeDoor(x) {
+      const s = spriteFromCanvas((ctx, w, h) => {
+        // outer frame (purple)
+        ctx.fillStyle = colorHex(PAL.purple);
+        ctx.fillRect(0, 0, w, h);
+        // inner panel (green-light)
+        ctx.fillStyle = colorHex(PAL.greenLt);
+        ctx.fillRect(2, 2, w - 4, h - 4);
+        // top arch hint (orange)
+        ctx.fillStyle = colorHex(PAL.orange);
+        ctx.fillRect(2, 2, w - 4, 4);
+        // knob (yellow)
+        ctx.fillStyle = colorHex(PAL.yellow);
+        ctx.fillRect(w - 5, h / 2, 1, 1);
+      }, 16, 32, 1.6, 3.2);
+      s.position.set(x, 1.6, -3);
+      return s;
+    }
+
+    const doorL = makeDoor(-2.2);
+    const doorR = makeDoor(2.2);
+    scene.add(doorL, doorR);
+
+    // -------- Fullscreen upscale pass --------
+    const fsScene = new THREE.Scene();
+    const fsCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const fsMat = new THREE.MeshBasicMaterial({ map: target.texture });
+    fsScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fsMat));
+
+    // -------- Resize: keep pixel aspect, fit window with letterboxing --------
+    function resize() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      // integer scale so pixels stay sharp
+      const scale = Math.max(1, Math.floor(Math.min(W / PIXEL_W, H / PIXEL_H)));
+      const cw = PIXEL_W * scale;
+      const ch = PIXEL_H * scale;
+      renderer.setSize(cw, ch, false);
+      const c = renderer.domElement;
+      c.style.position = 'fixed';
+      c.style.left = ((W - cw) / 2) + 'px';
+      c.style.top = ((H - ch) / 2) + 'px';
+      c.style.width = cw + 'px';
+      c.style.height = ch + 'px';
+    }
+    resize();
+    addEventListener('resize', resize);
+
+    // -------- Input (use e.code so layout/IME doesn't matter) --------
+    const keys = Object.create(null);
+    addEventListener('keydown', e => keys[e.code] = true);
+    addEventListener('keyup', e => keys[e.code] = false);
+
+    // -------- Loop --------
+    const SPEED = 0.06;
+    function tick() {
+      let dx = 0, dz = 0;
+      if (keys.KeyW || keys.ArrowUp)    dz -= 1;
+      if (keys.KeyS || keys.ArrowDown)  dz += 1;
+      if (keys.KeyA || keys.ArrowLeft)  dx -= 1;
+      if (keys.KeyD || keys.ArrowRight) dx += 1;
+      const len = Math.hypot(dx, dz);
+      if (len > 0) {
+        player.position.x += (dx / len) * SPEED;
+        player.position.z += (dz / len) * SPEED;
+        // clamp inside floor
+        player.position.x = Math.max(-9, Math.min(9, player.position.x));
+        player.position.z = Math.max(-7, Math.min(9, player.position.z));
+      }
+
+      renderer.setRenderTarget(target);
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(null);
+      renderer.render(fsScene, fsCamera);
+
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>
