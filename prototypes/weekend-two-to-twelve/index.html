@@ -66,9 +66,11 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(PAL.shadow);
 
-    const camera = new THREE.PerspectiveCamera(40, PIXEL_W / PIXEL_H, 0.1, 100);
-    camera.position.set(0, 5.0, 7.0);
-    camera.lookAt(0, 0.8, -2);
+    // First-person camera: head height, looking toward doors
+    const camera = new THREE.PerspectiveCamera(70, PIXEL_W / PIXEL_H, 0.1, 100);
+    const SPAWN = new THREE.Vector3(0, 1.6, 4);
+    camera.position.copy(SPAWN);
+    camera.lookAt(0, 1.6, -3);
 
     // floor (GB dark green)
     const floor = new THREE.Mesh(
@@ -119,25 +121,7 @@
       return '#' + hex.toString(16).padStart(6, '0');
     }
 
-    // -------- Player (16x16 yellow blob with pink dot eyes) --------
-    const player = spriteFromCanvas((ctx, w, h) => {
-      ctx.fillStyle = colorHex(PAL.yellow);
-      // round-ish body
-      ctx.fillRect(2, 4, 12, 10);
-      ctx.fillRect(3, 3, 10, 12);
-      ctx.fillRect(4, 2, 8, 14);
-      // eyes
-      ctx.fillStyle = colorHex(PAL.shadow);
-      ctx.fillRect(5, 7, 2, 2);
-      ctx.fillRect(9, 7, 2, 2);
-      // mouth (smile)
-      ctx.fillStyle = colorHex(PAL.pink);
-      ctx.fillRect(6, 11, 4, 1);
-      ctx.fillRect(5, 10, 1, 1);
-      ctx.fillRect(10, 10, 1, 1);
-    }, 16, 16, 1.2, 1.2);
-    player.position.set(0, 0.8, 4);
-    scene.add(player);
+    // First-person — no player sprite, the camera is the player.
 
     // -------- Doors (16x32, purple frame, lighter green inside) --------
     function makeDoor(x) {
@@ -203,11 +187,11 @@
       if (keys.KeyD || keys.ArrowRight) dx += 1;
       const len = Math.hypot(dx, dz);
       if (len > 0) {
-        player.position.x += (dx / len) * SPEED;
-        player.position.z += (dz / len) * SPEED;
+        camera.position.x += (dx / len) * SPEED;
+        camera.position.z += (dz / len) * SPEED;
         // clamp inside floor
-        player.position.x = Math.max(-9, Math.min(9, player.position.x));
-        player.position.z = Math.max(-7, Math.min(9, player.position.z));
+        camera.position.x = Math.max(-9, Math.min(9, camera.position.x));
+        camera.position.z = Math.max(-7, Math.min(9, camera.position.z));
       }
 
       renderer.setRenderTarget(target);
