@@ -7,6 +7,7 @@ mod gem;
 mod hp;
 mod hud;
 mod player;
+mod sfx;
 mod upgrade;
 mod weapon;
 
@@ -17,6 +18,7 @@ use gem::GemPlugin;
 use hp::HpPlugin;
 use hud::HudPlugin;
 use player::PlayerPlugin;
+use sfx::SfxPlugin;
 use upgrade::UpgradePlugin;
 use weapon::WeaponPlugin;
 
@@ -40,6 +42,7 @@ fn main() {
             UpgradePlugin,
             HpPlugin,
             HudPlugin,
+            SfxPlugin,
         ))
         .run();
 }

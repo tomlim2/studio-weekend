@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::combat::EnemyKilled;
 use crate::player::{Level, PLAYER_RADIUS, Player, Xp};
+use crate::sfx::{Sfx, play_oneshot};
 use crate::upgrade::{GameState, GameplaySet};
 
 const GEM_RADIUS: f32 = 4.0;
@@ -79,6 +80,7 @@ fn attract_gems_to_player(
 
 fn pickup_gems(
     mut commands: Commands,
+    sfx: Res<Sfx>,
     mut player_q: Query<(&Transform, &mut Xp), With<Player>>,
     gems: Query<(Entity, &Transform), With<Gem>>,
 ) {
@@ -93,11 +95,14 @@ fn pickup_gems(
             xp.0 += XP_PER_GEM;
             commands.entity(gem_entity).despawn();
             info!("XP +{} (total {})", XP_PER_GEM, xp.0);
+            play_oneshot(&mut commands, &sfx.pickup);
         }
     }
 }
 
 fn level_up_check(
+    mut commands: Commands,
+    sfx: Res<Sfx>,
     mut player_q: Query<(&mut Xp, &mut Level), With<Player>>,
     mut level_up_writer: MessageWriter<LevelUp>,
 ) {
@@ -114,6 +119,7 @@ fn level_up_check(
         level.0 += 1;
         info!("LEVEL UP! Now level {}", level.0);
         level_up_writer.write(LevelUp);
+        play_oneshot(&mut commands, &sfx.levelup);
     }
 }
 

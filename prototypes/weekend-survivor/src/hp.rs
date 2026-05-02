@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::enemy::{ENEMY_RADIUS, Enemy};
 use crate::player::{PLAYER_RADIUS, Player};
+use crate::sfx::{Sfx, play_oneshot};
 use crate::upgrade::{GameState, GameplaySet};
 
 pub const PLAYER_MAX_HP: i32 = 100;
@@ -57,6 +58,8 @@ fn tick_iframes(time: Res<Time>, mut q: Query<&mut IFrame>) {
 }
 
 fn enemy_touch_damage(
+    mut commands: Commands,
+    sfx: Res<Sfx>,
     mut player_q: Query<(&Transform, &mut Hp, &mut IFrame), With<Player>>,
     enemies: Query<&Transform, With<Enemy>>,
 ) {
@@ -74,6 +77,7 @@ fn enemy_touch_damage(
             hp.current = (hp.current - ENEMY_TOUCH_DAMAGE).max(0);
             iframe.0 = I_FRAME_SECS;
             info!("Player hit! HP: {}/{}", hp.current, hp.max);
+            play_oneshot(&mut commands, &sfx.hit);
             return;
         }
     }
